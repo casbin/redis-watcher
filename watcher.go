@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/casbin/casbin/v2/model"
 	"log"
 	"strings"
 	"sync"
+
+	"github.com/casbin/casbin/v2/model"
 
 	"github.com/casbin/casbin/v2/persist"
 	rds "github.com/go-redis/redis/v8"
@@ -26,6 +27,8 @@ type Watcher struct {
 type MSG struct {
 	Method string
 	ID     string
+	sec    string
+	ptype  string
 	Params interface{}
 }
 
@@ -102,38 +105,40 @@ func (w *Watcher) Update() error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"Update", w.options.LocalID, ""}).Err()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"Update", w.options.LocalID, "", "", ""}).Err()
 	})
 }
 
 // UpdateForAddPolicy calls the update callback of other instances to synchronize their policy.
 // It is called after Enforcer.AddPolicy()
-func (w *Watcher) UpdateForAddPolicy(params ...string) error {
+func (w *Watcher) UpdateForAddPolicy(sec, ptype string, params ...string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForAddPolicy", w.options.LocalID, params}).Err()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForAddPolicy", w.options.LocalID, sec, ptype, params}).Err()
 	})
 }
 
 // UpdateForRemovePolicy UPdateForRemovePolicy calls the update callback of other instances to synchronize their policy.
 // It is called after Enforcer.RemovePolicy()
-func (w *Watcher) UpdateForRemovePolicy(params ...string) error {
+func (w *Watcher) UpdateForRemovePolicy(sec, ptype string, params ...string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForRemovePolicy", w.options.LocalID, params}).Err()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForRemovePolicy", w.options.LocalID, sec, ptype, params}).Err()
 	})
 }
 
 // UpdateForRemoveFilteredPolicy calls the update callback of other instances to synchronize their policy.
 // It is called after Enforcer.RemoveFilteredNamedGroupingPolicy()
-func (w *Watcher) UpdateForRemoveFilteredPolicy(fieldIndex int, fieldValues ...string) error {
+func (w *Watcher) UpdateForRemoveFilteredPolicy(sec, ptype string, fieldIndex int, fieldValues ...string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
 		return w.pubClient.Publish(context.Background(), w.options.Channel,
 			&MSG{"UpdateForRemoveFilteredPolicy", w.options.LocalID,
+				sec,
+				ptype,
 				fmt.Sprintf("%d %s", fieldIndex, strings.Join(fieldValues, " ")),
 			},
 		).Err()
@@ -146,7 +151,7 @@ func (w *Watcher) UpdateForSavePolicy(model model.Model) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForSavePolicy", w.options.LocalID, model}).Err()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForSavePolicy", w.options.LocalID, "", "", model}).Err()
 	})
 }
 

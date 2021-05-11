@@ -27,8 +27,8 @@ type Watcher struct {
 type MSG struct {
 	Method string
 	ID     string
-	sec    string
-	ptype  string
+	Sec    string
+	Ptype  string
 	Params interface{}
 }
 

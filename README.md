@@ -10,7 +10,7 @@ Redis Watcher is a [Redis](http://redis.io) watcher for [Casbin](https://github.
 
 ## Installation
 
-    go get github.com/casbin/redis-watcher
+    go get github.com/casbin/redis-watcher/v2
 
 ## Simple Example
 
@@ -21,7 +21,7 @@ import (
 	"log"
 
 	"github.com/casbin/casbin/v2"
-	watcher "github.com/casbin/redis-watcher"
+	watcher "github.com/casbin/redis-watcher/v2"
 	"github.com/go-redis/redis/v8"
 )
 

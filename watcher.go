@@ -54,11 +54,20 @@ func (m *MSG) UnmarshalBinary(data []byte) error {
 func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Addr = addr
 	w := &Watcher{
-		subClient: rds.NewClient(&option.Options),
-		pubClient: rds.NewClient(&option.Options),
 		ctx:       context.Background(),
 		close:     make(chan struct{}),
 	}
+
+	if option.SubClient != nil {
+	    w.subClient = option.SubClient
+    } else {
+        w.subClient = rds.NewClient(&option.Options)
+    }
+    if option.PubClient != nil {
+        w.pubClient = option.PubClient
+    } else {
+        w.pubClient = rds.NewClient(&option.Options)
+    }
 
 	if err := w.subClient.Ping(w.ctx).Err(); err != nil {
 		return nil, err

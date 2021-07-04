@@ -7,9 +7,10 @@ import (
 
 type WatcherOptions struct {
 	rds.Options
-	Channel    string
-	IgnoreSelf bool
-	LocalID    string
+	Channel                string
+	IgnoreSelf             bool
+	LocalID                string
+	OptionalUpdateCallback func(string)
 }
 
 func initConfig(option *WatcherOptions) {

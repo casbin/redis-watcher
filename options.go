@@ -7,6 +7,8 @@ import (
 
 type WatcherOptions struct {
 	rds.Options
+	SubClient              *rds.Client
+	PubClient              *rds.Client
 	Channel                string
 	IgnoreSelf             bool
 	LocalID                string

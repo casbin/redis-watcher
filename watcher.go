@@ -53,6 +53,7 @@ func (m *MSG) UnmarshalBinary(data []byte) error {
 //
 func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Addr = addr
+	initConfig(&option)
 	w := &Watcher{
 		subClient: rds.NewClient(&option.Options),
 		pubClient: rds.NewClient(&option.Options),
@@ -60,6 +61,23 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 		close:     make(chan struct{}),
 	}
 
+	w.initConfig(option)
+
+	if err := w.subClient.Ping(w.ctx).Err(); err != nil {
+		return nil, err
+	}
+	if err := w.pubClient.Ping(w.ctx).Err(); err != nil {
+		return nil, err
+	}
+
+	w.options = option
+
+	w.subscribe()
+
+	return w, nil
+}
+
+func (w *Watcher) initConfig(option WatcherOptions) error {
 	var err error
 	if option.OptionalUpdateCallback != nil {
 		err = w.SetUpdateCallback(option.OptionalUpdateCallback)
@@ -69,22 +87,21 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 		})
 	}
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err = w.subClient.Ping(w.ctx).Err(); err != nil {
-		return nil, err
+	if option.SubClient != nil {
+		w.subClient = option.SubClient
+	} else {
+		w.subClient = rds.NewClient(&option.Options)
 	}
-	if err = w.pubClient.Ping(w.ctx).Err(); err != nil {
-		return nil, err
+
+	if option.PubClient != nil {
+		w.pubClient = option.PubClient
+	} else {
+		w.pubClient = rds.NewClient(&option.Options)
 	}
-
-	initConfig(&option)
-	w.options = option
-
-	w.subscribe()
-
-	return w, nil
+	return nil
 }
 
 // NewPublishWatcher return a Watcher only publish but not subscribe

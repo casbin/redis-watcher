@@ -12,8 +12,8 @@ import (
 	"github.com/casbin/casbin/v2"
 )
 
-func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher) {
-	w, err := NewWatcher("127.0.0.1:6379", WatcherOptions{})
+func initWatcherWithOptions(t *testing.T, wo WatcherOptions) (*casbin.Enforcer, *Watcher) {
+	w, err := NewWatcher("127.0.0.1:6379", wo)
 	if err != nil {
 		t.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -25,11 +25,29 @@ func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher) {
 	_ = e.SetWatcher(w)
 	return e, w.(*Watcher)
 }
+
+func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher) {
+	return initWatcherWithOptions(t, WatcherOptions{})
+}
+
 func TestWatcher(t *testing.T) {
 	_, w := initWatcher(t)
 	_ = w.SetUpdateCallback(func(s string) {
 		fmt.Println(s)
 	})
+	_ = w.Update()
+	w.Close()
+	time.Sleep(time.Millisecond * 500)
+}
+
+func TestWatcherWithIgnoreSelfTrue(t *testing.T) {
+	wo := WatcherOptions{
+		IgnoreSelf: true,
+		OptionalUpdateCallback: func(s string) {
+			t.Fatalf("This callback should not be called when IgnoreSelf is set true.")
+		},
+	}
+	_, w := initWatcherWithOptions(t, wo)
 	_ = w.Update()
 	w.Close()
 	time.Sleep(time.Millisecond * 500)

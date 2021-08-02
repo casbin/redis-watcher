@@ -226,7 +226,16 @@ func (w *Watcher) subscribe() {
 			default:
 			}
 			data := msg.Payload
-			w.callback(data)
+			msgStruct := &MSG{}
+			err := msgStruct.UnmarshalBinary([]byte(data))
+			if err != nil {
+				log.Println(fmt.Printf("Failed to parse message: %s with error: %s\n", data, err.Error()))
+			} else {
+				isSelf := msgStruct.ID == w.options.LocalID
+				if !(w.options.IgnoreSelf && isSelf) {
+					w.callback(data)
+				}
+			}
 		}
 	}()
 	wg.Wait()

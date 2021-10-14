@@ -32,13 +32,14 @@ func updateCallback(msg string) {
 func main() {
 	// Initialize the watcher.
 	// Use the Redis host as parameter.
-	w, _ := watcher.NewWatcher("localhost:6379", watcher.WatcherOptions{
+	w, _ := rediswatcher.NewWatcher("localhost:6379", rediswatcher.WatcherOptions{
 		Options: redis.Options{
 			Network:  "tcp",
 			Password: "",
 		},
 		Channel:    "/casbin",
-		IgnoreSelf: true,
+		// Only exists in test, generally be true
+		IgnoreSelf: false,
 	})
 
 	// Initialize the enforcer.
@@ -53,6 +54,8 @@ func main() {
 	// Update the policy to test the effect.
 	// You should see "[casbin rules updated]" in the log.
 	_ = e.SavePolicy()
+	// Only exists in test
+	fmt.Scanln()
 }
 
 ```

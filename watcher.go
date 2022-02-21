@@ -55,13 +55,13 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Addr = addr
 	initConfig(&option)
 	w := &Watcher{
-		subClient: rds.NewClient(&option.Options),
-		pubClient: rds.NewClient(&option.Options),
-		ctx:       context.Background(),
-		close:     make(chan struct{}),
+		ctx:   context.Background(),
+		close: make(chan struct{}),
 	}
 
-	w.initConfig(option)
+	if err := w.initConfig(option); err != nil {
+		return nil, err
+	}
 
 	if err := w.subClient.Ping(w.ctx).Err(); err != nil {
 		return nil, err

@@ -148,7 +148,7 @@ func (w *Watcher) UpdateForAddPolicy(sec, ptype string, params ...string) error 
 	})
 }
 
-// UpdateForRemovePolicy UPdateForRemovePolicy calls the update callback of other instances to synchronize their policy.
+// UpdateForRemovePolicy calls the update callback of other instances to synchronize their policy.
 // It is called after Enforcer.RemovePolicy()
 func (w *Watcher) UpdateForRemovePolicy(sec, ptype string, params ...string) error {
 	return w.logRecord(func() error {
@@ -181,6 +181,26 @@ func (w *Watcher) UpdateForSavePolicy(model model.Model) error {
 		w.l.Lock()
 		defer w.l.Unlock()
 		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForSavePolicy", w.options.LocalID, "", "", model}).Err()
+	})
+}
+
+// UpdateForAddPolicies calls the update callback of other instances to synchronize their policies in batch.
+// It is called after Enforcer.AddPolicies()
+func (w *Watcher) UpdateForAddPolicies(sec string, ptype string, rules ...[]string) error {
+	return w.logRecord(func() error {
+		w.l.Lock()
+		defer w.l.Unlock()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForAddPolicies", w.options.LocalID, sec, ptype, rules}).Err()
+	})
+}
+
+// UpdateForRemovePolicies calls the update callback of other instances to synchronize their policies in batch.
+// It is called after Enforcer.RemovePolicies()
+func (w *Watcher) UpdateForRemovePolicies(sec string, ptype string, rules ...[]string) error {
+	return w.logRecord(func() error {
+		w.l.Lock()
+		defer w.l.Unlock()
+		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForRemovePolicies", w.options.LocalID, sec, ptype, rules}).Err()
 	})
 }
 

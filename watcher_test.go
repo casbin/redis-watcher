@@ -1,11 +1,8 @@
 package rediswatcher
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/casbin/casbin/v2/model"
 	"log"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -152,17 +149,9 @@ func TestUpdateSavePolicy(t *testing.T) {
 			if ID != w.options.LocalID {
 				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
 			}
-			s := `{"e":{"e":{"Key":"e","Value":"some(where (p_eft == allow))","Tokens":null,"Policy":null,"PolicyMap":{},"RM":null}},"g":{"g":{"Key":"g","Value":"_, _","Tokens":null,"Policy":[["alice","data2_admin"]],"PolicyMap":{"alice,data2_admin":0},"RM":{}}},"logger":{"logger":{"Key":"","Value":"","Tokens":null,"Policy":null,"PolicyMap":null,"RM":null}},"m":{"m":{"Key":"m","Value":"g(r_sub, p_sub) \u0026\u0026 r_obj == p_obj \u0026\u0026 r_act == p_act","Tokens":null,"Policy":null,"PolicyMap":{},"RM":null}},"p":{"p":{"Key":"p","Value":"sub, obj, act","Tokens":["p_sub","p_obj","p_act"],"Policy":[["alice","data1","read"],["bob","data2","write"],["data2_admin","data2","read"],["data2_admin","data2","write"]],"PolicyMap":{"alice,data1,read":0,"bob,data2,write":1,"data2_admin,data2,read":2,"data2_admin,data2,write":3},"RM":null}},"r":{"r":{"Key":"r","Value":"sub, obj, act","Tokens":["r_sub","r_obj","r_act"],"Policy":null,"PolicyMap":{},"RM":null}}}`
-			expected := model.Model{}
-			_ = json.Unmarshal([]byte(s), &expected)
-			bytes, _ := json.Marshal(params)
-			res := model.Model{}
-			_ = json.Unmarshal(bytes, &res)
-			if !reflect.DeepEqual(res.GetPolicy("p", "p"), expected.GetPolicy("p", "p")) {
-				t.Fatalf("instance Params should be %#v instead of %#v", expected, res)
-			}
-			if !reflect.DeepEqual(res.GetPolicy("g", "g"), expected.GetPolicy("g", "g")) {
-				t.Fatalf("instance Params should be %#v instead of %#v", expected, res)
+			res := params.(string)
+			if res != "" {
+				t.Fatalf("instance Params should be empty instead of %s", res)
 			}
 		})
 	})

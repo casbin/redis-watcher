@@ -2,8 +2,7 @@ package rediswatcher
 
 import (
 	"fmt"
-	"log"
-	"strings"
+	"reflect"
 	"testing"
 	"time"
 
@@ -21,6 +20,7 @@ func initWatcherWithOptions(t *testing.T, wo WatcherOptions) (*casbin.Enforcer, 
 		t.Fatalf("Failed to create enforcer: %v", err)
 	}
 	_ = e.SetWatcher(w)
+	_ = w.SetUpdateCallback(MakeDefaultUpdateCallback(e))
 	return e, w.(*Watcher)
 }
 
@@ -70,72 +70,57 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestUpdateForAddPolicy(t *testing.T) {
-	e, w := initWatcher(t)
-	_ = w.SetUpdateCallback(func(s string) {
-		CustomDefaultFunc(
-			func(id string, params interface{}) {
-				t.Fatalf("method mapping error")
-			},
-		)(s, nil, func(ID string, params interface{}) {
-			if ID != w.options.LocalID {
-				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
-			}
-			expected := fmt.Sprintf("%v", []string{"alice", "book1", "write"})
-			res := fmt.Sprintf("%v", params)
-			if expected != res {
-				t.Fatalf("instance Params should be %s instead of %s", expected, res)
-			}
-		}, nil, nil, nil)
-	})
-	_, _ = e.AddPolicy("alice", "book1", "write")
-	w.Close()
+	wo := WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
+
 	time.Sleep(time.Millisecond * 500)
+	_, _ = e.AddPolicy("alice", "book1", "write")
+	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Error("These two enforcers' policies should be equal")
+	}
+
+	w.Close()
+	w2.Close()
 }
 
 func TestUpdateForRemovePolicy(t *testing.T) {
-	e, w := initWatcher(t)
-	_ = w.SetUpdateCallback(func(s string) {
-		CustomDefaultFunc(
-			func(id string, params interface{}) {
-				t.Fatalf("method mapping error")
-			},
-		)(s, nil, nil, func(ID string, params interface{}) {
-			if ID != w.options.LocalID {
-				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
-			}
-			expected := fmt.Sprintf("%s", []string{"alice", "data1", "read"})
-			res := fmt.Sprintf("%s", params)
-			if expected != res {
-				t.Fatalf("instance Params should be %s instead of %s", expected, res)
-			}
-		}, nil, nil)
-	})
-	_, _ = e.RemovePolicy("alice", "data1", "read")
-	w.Close()
+	wo := WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
+
 	time.Sleep(time.Millisecond * 500)
+	_, _ = e.RemovePolicy("alice", "data1", "read")
+	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Error("These two enforcers' policies should be equal")
+	}
+
+	w.Close()
+	w2.Close()
 }
 
 func TestUpdateForRemoveFilteredPolicy(t *testing.T) {
-	e, w := initWatcher(t)
-	_ = w.SetUpdateCallback(func(s string) {
-		CustomDefaultFunc(
-			func(id string, params interface{}) {
-				t.Fatalf("method mapping error")
-			},
-		)(s, nil, nil, nil, func(ID string, params interface{}) {
-			if ID != w.options.LocalID {
-				t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, ID)
-			}
-			expected := fmt.Sprintf("%d %s", 1, strings.Join([]string{"data1", "read"}, " "))
-			res := params.(string)
-			if res != expected {
-				t.Fatalf("instance Params should be %s instead of %s", expected, res)
-			}
-		}, nil)
-	})
-	_, _ = e.RemoveFilteredPolicy(1, "data1", "read")
-	w.Close()
+	wo := WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
+
 	time.Sleep(time.Millisecond * 500)
+	_, _ = e.RemoveFilteredPolicy(1, "data1", "read")
+	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Error("These two enforcers' policies should be equal")
+	}
+
+	w.Close()
+	w2.Close()
 }
 
 func TestUpdateSavePolicy(t *testing.T) {
@@ -168,63 +153,41 @@ func TestUpdateForAddPolicies(t *testing.T) {
 		{"ham", "data4", "write"},
 	}
 
-	e, w := initWatcher(t)
-	_ = w.SetUpdateCallback(func(msg string) {
-		log.Println("received")
+	wo := WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
 
-		msgStruct := &MSG{}
-
-		err := msgStruct.UnmarshalBinary([]byte(msg))
-		if err != nil {
-			log.Println(err)
-		}
-		fmt.Println(msgStruct)
-		if msgStruct.ID != w.options.LocalID {
-			t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, msgStruct.ID)
-		}
-		expected := fmt.Sprintf("%v", rules)
-		res := fmt.Sprintf("%v", msgStruct.Params)
-		if expected != res {
-			t.Fatalf("instance Params should be %s instead of %s", expected, res)
-		}
-	})
 	time.Sleep(time.Millisecond * 500)
 	_, _ = e.AddPolicies(rules)
 	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Error("These two enforcers' policies should be equal")
+	}
+
 	w.Close()
+	w2.Close()
 }
 
 func TestUpdateForRemovePolicies(t *testing.T) {
 	rules := [][]string{
-		{"jack", "data4", "read"},
-		{"katy", "data4", "write"},
-		{"leyo", "data4", "read"},
-		{"ham", "data4", "write"},
+		{"alice", "data1", "read"},
+		{"bob", "data2", "write"},
 	}
+	wo := WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
 
-	e, w := initWatcher(t)
-	_ = w.SetUpdateCallback(func(msg string) {
-		log.Println("received")
-
-		msgStruct := &MSG{}
-
-		err := msgStruct.UnmarshalBinary([]byte(msg))
-		if err != nil {
-			log.Println(err)
-		}
-		fmt.Println(msgStruct)
-		if msgStruct.ID != w.options.LocalID {
-			t.Fatalf("instance ID should be %s instead of %s", w.options.LocalID, msgStruct.ID)
-		}
-		expected := fmt.Sprintf("%v", rules)
-		res := fmt.Sprintf("%v", msgStruct.Params)
-		if expected != res {
-			t.Fatalf("instance Params should be %s instead of %s", expected, res)
-		}
-	})
 	time.Sleep(time.Millisecond * 500)
-	_, _ = e.AddPolicies(rules)
 	_, _ = e.RemovePolicies(rules)
 	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Error("These two enforcers' policies should be equal")
+	}
+
 	w.Close()
+	w2.Close()
 }

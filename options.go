@@ -6,7 +6,8 @@ import (
 )
 
 type WatcherOptions struct {
-	rds.Options
+	Options                rds.Options
+	ClusterOption          rds.ClusterOptions
 	SubClient              *rds.Client
 	PubClient              *rds.Client
 	Channel                string

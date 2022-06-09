@@ -78,22 +78,28 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	return w, nil
 }
 
-func NewWatcherWithClusterRedis(addrs string, option WatcherOptions) (persist.Watcher, error) {
+// NewWatcherWithCluster creates a new Watcher to be used with a Casbin enforcer
+// addrs is a redis-cluster target string in the format "host1:port1,host2:port2,host3:port3"
+//
+// 		Example:
+// 				w, err := rediswatcher.NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6379,127.0.0.1:6379",WatcherOptions{})
+//
+func NewWatcherWithCluster(addrs string, option WatcherOptions) (persist.Watcher, error) {
 	addrsStr := strings.Split(addrs, ",")
 	if len(addrsStr) < 3 {
 		return nil, errors.New("nodes num must >= 3")
 	}
-	option.ClusterOption.Addrs = addrsStr
+	option.ClusterOptions.Addrs = addrsStr
 	initConfig(&option)
 
 	w := &Watcher{
 		subClient: rds.NewClusterClient(&rds.ClusterOptions{
 			Addrs:    addrsStr,
-			Password: option.ClusterOption.Password,
+			Password: option.ClusterOptions.Password,
 		}),
 		pubClient: rds.NewClusterClient(&rds.ClusterOptions{
 			Addrs:    addrsStr,
-			Password: option.ClusterOption.Password,
+			Password: option.ClusterOptions.Password,
 		}),
 		ctx:   context.Background(),
 		close: make(chan struct{}),
@@ -132,7 +138,7 @@ func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 		w.subClient = option.SubClient
 	} else {
 		if len(cluster) > 0 && cluster[0] {
-			w.subClient = rds.NewClusterClient(&option.ClusterOption)
+			w.subClient = rds.NewClusterClient(&option.ClusterOptions)
 		} else {
 			w.subClient = rds.NewClient(&option.Options)
 		}
@@ -142,7 +148,7 @@ func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 		w.pubClient = option.PubClient
 	} else {
 		if len(cluster) > 0 && cluster[0] {
-			w.pubClient = rds.NewClusterClient(&option.ClusterOption)
+			w.pubClient = rds.NewClusterClient(&option.ClusterOptions)
 		} else {
 			w.pubClient = rds.NewClient(&option.Options)
 		}

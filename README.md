@@ -42,6 +42,15 @@ func main() {
 		IgnoreSelf: false,
 	})
 
+	// Or initialize the watcher in redis cluster.
+	// w, _ := rediswatcher.NewWatcherWithCluster("localhost:6379,localhost:6379,localhost:6379", rediswatcher.WatcherOptions{
+	// 	ClusterOptions: redis.ClusterOptions{
+	// 		Password: "",
+	// 	},
+	// 	Channel: "/casbin",
+	// 	IgnoreSelf: false,
+	// })
+
 	// Initialize the enforcer.
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
 

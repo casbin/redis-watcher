@@ -3,18 +3,28 @@ package rediswatcher
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/casbin/casbin/v2/model"
 	"log"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/casbin/casbin/v2/model"
+
 	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v2/persist"
 )
 
-func initWatcherWithOptions(t *testing.T, wo WatcherOptions) (*casbin.Enforcer, *Watcher) {
-	w, err := NewWatcher("127.0.0.1:6379", wo)
+func initWatcherWithOptions(t *testing.T, wo WatcherOptions, cluster ...bool) (*casbin.Enforcer, *Watcher) {
+	var (
+		w   persist.Watcher
+		err error
+	)
+	if len(cluster) > 0 && cluster[0] {
+		w, err = NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6379,127.0.0.1:6379", wo)
+	} else {
+		w, err = NewWatcher("127.0.0.1:6379", wo)
+	}
 	if err != nil {
 		t.Fatalf("Failed to connect to Redis: %v", err)
 	}
@@ -27,8 +37,8 @@ func initWatcherWithOptions(t *testing.T, wo WatcherOptions) (*casbin.Enforcer, 
 	return e, w.(*Watcher)
 }
 
-func initWatcher(t *testing.T) (*casbin.Enforcer, *Watcher) {
-	return initWatcherWithOptions(t, WatcherOptions{})
+func initWatcher(t *testing.T, cluster ...bool) (*casbin.Enforcer, *Watcher) {
+	return initWatcherWithOptions(t, WatcherOptions{}, cluster...)
 }
 
 func TestWatcher(t *testing.T) {

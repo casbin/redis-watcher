@@ -3,6 +3,7 @@ package rediswatcher
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -16,8 +17,8 @@ import (
 
 type Watcher struct {
 	l         sync.Mutex
-	subClient *rds.Client
-	pubClient *rds.Client
+	subClient rds.UniversalClient
+	pubClient rds.UniversalClient
 	options   WatcherOptions
 	close     chan struct{}
 	callback  func(string)
@@ -52,7 +53,7 @@ func (m *MSG) UnmarshalBinary(data []byte) error {
 // 				w, err := rediswatcher.NewWatcher("127.0.0.1:6379",WatcherOptions{}, nil)
 //
 func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
-	option.Addr = addr
+	option.Options.Addr = addr
 	initConfig(&option)
 	w := &Watcher{
 		ctx:   context.Background(),
@@ -77,7 +78,50 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	return w, nil
 }
 
-func (w *Watcher) initConfig(option WatcherOptions) error {
+// NewWatcherWithCluster creates a new Watcher to be used with a Casbin enforcer
+// addrs is a redis-cluster target string in the format "host1:port1,host2:port2,host3:port3"
+//
+// 		Example:
+// 				w, err := rediswatcher.NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6379,127.0.0.1:6379",WatcherOptions{})
+//
+func NewWatcherWithCluster(addrs string, option WatcherOptions) (persist.Watcher, error) {
+	addrsStr := strings.Split(addrs, ",")
+	if len(addrsStr) < 3 {
+		return nil, errors.New("nodes num must >= 3")
+	}
+	option.ClusterOptions.Addrs = addrsStr
+	initConfig(&option)
+
+	w := &Watcher{
+		subClient: rds.NewClusterClient(&rds.ClusterOptions{
+			Addrs:    addrsStr,
+			Password: option.ClusterOptions.Password,
+		}),
+		pubClient: rds.NewClusterClient(&rds.ClusterOptions{
+			Addrs:    addrsStr,
+			Password: option.ClusterOptions.Password,
+		}),
+		ctx:   context.Background(),
+		close: make(chan struct{}),
+	}
+
+	w.initConfig(option, true)
+
+	if err := w.subClient.Ping(w.ctx).Err(); err != nil {
+		return nil, err
+	}
+	if err := w.pubClient.Ping(w.ctx).Err(); err != nil {
+		return nil, err
+	}
+
+	w.options = option
+
+	w.subscribe()
+
+	return w, nil
+}
+
+func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 	var err error
 	if option.OptionalUpdateCallback != nil {
 		err = w.SetUpdateCallback(option.OptionalUpdateCallback)
@@ -93,20 +137,28 @@ func (w *Watcher) initConfig(option WatcherOptions) error {
 	if option.SubClient != nil {
 		w.subClient = option.SubClient
 	} else {
-		w.subClient = rds.NewClient(&option.Options)
+		if len(cluster) > 0 && cluster[0] {
+			w.subClient = rds.NewClusterClient(&option.ClusterOptions)
+		} else {
+			w.subClient = rds.NewClient(&option.Options)
+		}
 	}
 
 	if option.PubClient != nil {
 		w.pubClient = option.PubClient
 	} else {
-		w.pubClient = rds.NewClient(&option.Options)
+		if len(cluster) > 0 && cluster[0] {
+			w.pubClient = rds.NewClusterClient(&option.ClusterOptions)
+		} else {
+			w.pubClient = rds.NewClient(&option.Options)
+		}
 	}
 	return nil
 }
 
 // NewPublishWatcher return a Watcher only publish but not subscribe
 func NewPublishWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
-	option.Addr = addr
+	option.Options.Addr = addr
 	w := &Watcher{
 		pubClient: rds.NewClient(&option.Options),
 		ctx:       context.Background(),

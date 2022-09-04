@@ -59,6 +59,9 @@ func main() {
 
 	// Set callback to local example
 	_ = w.SetUpdateCallback(updateCallback)
+	
+	// Or use the default callback
+	// _ = w.SetUpdateCallback(rediswatcher.DefaultUpdateCallback(e))
 
 	// Update the policy to test the effect.
 	// You should see "[casbin rules updated]" in the log.
@@ -77,4 +80,3 @@ func main() {
 ## License
 
 This project is under Apache 2.0 License. See the [LICENSE](LICENSE) file for the full license text.
->>>>>>> 243bd42 (refactor)

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
-
 	"github.com/casbin/casbin/v2/persist"
 	rds "github.com/go-redis/redis/v8"
 )
@@ -25,13 +25,65 @@ type Watcher struct {
 	ctx       context.Context
 }
 
-type MSG struct {
-	Method string
-	ID     string
-	Sec    string
-	Ptype  string
-	Params interface{}
+func DefaultUpdateCallback(e casbin.IEnforcer) func(string) {
+	return func(msg string) {
+		msgStruct := &MSG{}
+
+		err := msgStruct.UnmarshalBinary([]byte(msg))
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		var res bool
+		switch msgStruct.Method {
+		case Update, UpdateForSavePolicy:
+			err = e.LoadPolicy()
+			res = true
+		case UpdateForAddPolicy:
+			res, err = e.SelfAddPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rule)
+		case UpdateForAddPolicies:
+			res, err = e.SelfAddPolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rules)
+		case UpdateForRemovePolicy:
+			res, err = e.SelfRemovePolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rule)
+		case UpdateForRemoveFilteredPolicy:
+			res, err = e.SelfRemoveFilteredPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.FieldIndex, msgStruct.FieldValues...)
+		case UpdateForRemovePolicies:
+			res, err = e.SelfRemovePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rules)
+		default:
+			err = errors.New("unknown update type")
+		}
+		if err != nil {
+			log.Println(err)
+		}
+		if !res {
+			log.Println("callback update policy failed")
+		}
+	}
 }
+
+type MSG struct {
+	Method      UpdateType
+	ID          string
+	Sec         string
+	Ptype       string
+	Rule        []string
+	Rules       [][]string
+	FieldIndex  int
+	FieldValues []string
+}
+
+type UpdateType string
+
+const (
+	Update                        UpdateType = "Update"
+	UpdateForAddPolicy            UpdateType = "UpdateForAddPolicy"
+	UpdateForRemovePolicy         UpdateType = "UpdateForRemovePolicy"
+	UpdateForRemoveFilteredPolicy UpdateType = "UpdateForRemoveFilteredPolicy"
+	UpdateForSavePolicy           UpdateType = "UpdateForSavePolicy"
+	UpdateForAddPolicies          UpdateType = "UpdateForAddPolicies"
+	UpdateForRemovePolicies       UpdateType = "UpdateForRemovePolicies"
+)
 
 func (m *MSG) MarshalBinary() ([]byte, error) {
 	return json.Marshal(m)
@@ -105,7 +157,10 @@ func NewWatcherWithCluster(addrs string, option WatcherOptions) (persist.Watcher
 		close: make(chan struct{}),
 	}
 
-	w.initConfig(option, true)
+	err := w.initConfig(option, true)
+	if err != nil {
+		return nil, err
+	}
 
 	if err := w.subClient.Ping(w.ctx).Err(); err != nil {
 		return nil, err
@@ -171,7 +226,7 @@ func NewPublishWatcher(addr string, option WatcherOptions) (persist.Watcher, err
 	return w, nil
 }
 
-// SetUpdateCallback SetUpdateCallBack sets the update callback function invoked by the watcher
+// SetUpdateCallback sets the update callback function invoked by the watcher
 // when the policy is updated. Defaults to Enforcer.LoadPolicy()
 func (w *Watcher) SetUpdateCallback(callback func(string)) error {
 	w.l.Lock()
@@ -186,7 +241,14 @@ func (w *Watcher) Update() error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"Update", w.options.LocalID, "", "", ""}).Err()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method: Update,
+				ID:     w.options.LocalID,
+			},
+		).Err()
 	})
 }
 
@@ -196,7 +258,16 @@ func (w *Watcher) UpdateForAddPolicy(sec, ptype string, params ...string) error 
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForAddPolicy", w.options.LocalID, sec, ptype, params}).Err()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method: UpdateForAddPolicy,
+				ID:     w.options.LocalID,
+				Sec:    sec,
+				Ptype:  ptype,
+				Rule:   params,
+			}).Err()
 	})
 }
 
@@ -206,7 +277,17 @@ func (w *Watcher) UpdateForRemovePolicy(sec, ptype string, params ...string) err
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForRemovePolicy", w.options.LocalID, sec, ptype, params}).Err()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method: UpdateForRemovePolicy,
+				ID:     w.options.LocalID,
+				Sec:    sec,
+				Ptype:  ptype,
+				Rule:   params,
+			},
+		).Err()
 	})
 }
 
@@ -216,11 +297,16 @@ func (w *Watcher) UpdateForRemoveFilteredPolicy(sec, ptype string, fieldIndex in
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel,
-			&MSG{"UpdateForRemoveFilteredPolicy", w.options.LocalID,
-				sec,
-				ptype,
-				fmt.Sprintf("%d %s", fieldIndex, strings.Join(fieldValues, " ")),
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method:      UpdateForRemoveFilteredPolicy,
+				ID:          w.options.LocalID,
+				Sec:         sec,
+				Ptype:       ptype,
+				FieldIndex:  fieldIndex,
+				FieldValues: fieldValues,
 			},
 		).Err()
 	})
@@ -232,7 +318,14 @@ func (w *Watcher) UpdateForSavePolicy(model model.Model) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForSavePolicy", w.options.LocalID, "", "", model}).Err()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method: UpdateForSavePolicy,
+				ID:     w.options.LocalID,
+			},
+		).Err()
 	})
 }
 
@@ -242,7 +335,17 @@ func (w *Watcher) UpdateForAddPolicies(sec string, ptype string, rules ...[]stri
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForAddPolicies", w.options.LocalID, sec, ptype, rules}).Err()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method: UpdateForAddPolicies,
+				ID:     w.options.LocalID,
+				Sec:    sec,
+				Ptype:  ptype,
+				Rules:  rules,
+			},
+		).Err()
 	})
 }
 
@@ -252,7 +355,17 @@ func (w *Watcher) UpdateForRemovePolicies(sec string, ptype string, rules ...[]s
 	return w.logRecord(func() error {
 		w.l.Lock()
 		defer w.l.Unlock()
-		return w.pubClient.Publish(context.Background(), w.options.Channel, &MSG{"UpdateForRemovePolicies", w.options.LocalID, sec, ptype, rules}).Err()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method: UpdateForRemovePolicies,
+				ID:     w.options.LocalID,
+				Sec:    sec,
+				Ptype:  ptype,
+				Rules:  rules,
+			},
+		).Err()
 	})
 }
 

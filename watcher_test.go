@@ -89,27 +89,21 @@ func TestWatcherWithIgnoreSelfTrue(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	wo := rediswatcher.WatcherOptions{
-		IgnoreSelf: true,
-	}
-	e, w := initWatcherWithOptions(t, wo)
-	e2, w2 := initWatcherWithOptions(t, wo)
+	_, w := initWatcher(t)
+	_ = w.SetUpdateCallback(func(s string) {
+		msgStruct := &rediswatcher.MSG{}
 
-	time.Sleep(time.Millisecond * 500)
-	_, _ = e.UpdatePolicy([]string{"alice", "data1", "read"}, []string{"alice", "data1", "write"})
-	_ = e.LoadPolicy()
-
-	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
-		t.Log("Method", "Update")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
-		t.Error("These two enforcers' policies should be equal")
-	}
-
+		err := msgStruct.UnmarshalBinary([]byte(s))
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if msgStruct.Method != "Update" {
+			t.Errorf("Method should be Update instead of %s", msgStruct.Method)
+		}
+	})
+	_ = w.Update()
 	w.Close()
-	w2.Close()
-	time.Sleep(time.Millisecond * 500)
 	time.Sleep(time.Millisecond * 500)
 }
 
@@ -249,6 +243,52 @@ func TestUpdateForRemovePolicies(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
 		t.Log("Method", "RemovePolicies")
+		t.Log("e.policy", e.GetPolicy())
+		t.Log("e2.policy", e2.GetPolicy())
+		t.Error("These two enforcers' policies should be equal")
+	}
+
+	w.Close()
+	w2.Close()
+	time.Sleep(time.Millisecond * 500)
+}
+
+func TestUpdateForUpdatePolicy(t *testing.T) {
+	wo := rediswatcher.WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
+
+	time.Sleep(time.Millisecond * 500)
+	_, _ = e.UpdatePolicy([]string{"alice", "data1", "read"}, []string{"alice", "data1", "write"})
+
+	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Log("Method", "UpdatePolicy")
+		t.Log("e.policy", e.GetPolicy())
+		t.Log("e2.policy", e2.GetPolicy())
+		t.Error("These two enforcers' policies should be equal")
+	}
+
+	w.Close()
+	w2.Close()
+	time.Sleep(time.Millisecond * 500)
+}
+
+func TestUpdateForUpdatePolicies(t *testing.T) {
+	wo := rediswatcher.WatcherOptions{
+		IgnoreSelf: true,
+	}
+	e, w := initWatcherWithOptions(t, wo)
+	e2, w2 := initWatcherWithOptions(t, wo)
+
+	time.Sleep(time.Millisecond * 500)
+	_, _ = e.UpdatePolicies([][]string{{"alice", "data1", "read"}}, [][]string{{"alice", "data1", "write"}})
+
+	time.Sleep(time.Millisecond * 500)
+	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+		t.Log("Method", "UpdatePolicies")
 		t.Log("e.policy", e.GetPolicy())
 		t.Log("e2.policy", e2.GetPolicy())
 		t.Error("These two enforcers' policies should be equal")

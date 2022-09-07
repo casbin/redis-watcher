@@ -41,15 +41,19 @@ func DefaultUpdateCallback(e casbin.IEnforcer) func(string) {
 			err = e.LoadPolicy()
 			res = true
 		case UpdateForAddPolicy:
-			res, err = e.SelfAddPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rule)
+			res, err = e.SelfAddPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRule)
 		case UpdateForAddPolicies:
-			res, err = e.SelfAddPolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rules)
+			res, err = e.SelfAddPolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRules)
 		case UpdateForRemovePolicy:
-			res, err = e.SelfRemovePolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rule)
+			res, err = e.SelfRemovePolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRule)
 		case UpdateForRemoveFilteredPolicy:
 			res, err = e.SelfRemoveFilteredPolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.FieldIndex, msgStruct.FieldValues...)
 		case UpdateForRemovePolicies:
-			res, err = e.SelfRemovePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.Rules)
+			res, err = e.SelfRemovePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.NewRules)
+		case UpdateForUpdatePolicy:
+			res, err = e.SelfUpdatePolicy(msgStruct.Sec, msgStruct.Ptype, msgStruct.OldRule, msgStruct.NewRule)
+		case UpdateForUpdatePolicies:
+			res, err = e.SelfUpdatePolicies(msgStruct.Sec, msgStruct.Ptype, msgStruct.OldRules, msgStruct.NewRules)
 		default:
 			err = errors.New("unknown update type")
 		}
@@ -67,8 +71,10 @@ type MSG struct {
 	ID          string
 	Sec         string
 	Ptype       string
-	Rule        []string
-	Rules       [][]string
+	OldRule     []string
+	OldRules    [][]string
+	NewRule     []string
+	NewRules    [][]string
 	FieldIndex  int
 	FieldValues []string
 }
@@ -83,6 +89,8 @@ const (
 	UpdateForSavePolicy           UpdateType = "UpdateForSavePolicy"
 	UpdateForAddPolicies          UpdateType = "UpdateForAddPolicies"
 	UpdateForRemovePolicies       UpdateType = "UpdateForRemovePolicies"
+	UpdateForUpdatePolicy         UpdateType = "UpdateForUpdatePolicy"
+	UpdateForUpdatePolicies       UpdateType = "UpdateForUpdatePolicies"
 )
 
 func (m *MSG) MarshalBinary() ([]byte, error) {
@@ -262,11 +270,11 @@ func (w *Watcher) UpdateForAddPolicy(sec, ptype string, params ...string) error 
 			context.Background(),
 			w.options.Channel,
 			&MSG{
-				Method: UpdateForAddPolicy,
-				ID:     w.options.LocalID,
-				Sec:    sec,
-				Ptype:  ptype,
-				Rule:   params,
+				Method:  UpdateForAddPolicy,
+				ID:      w.options.LocalID,
+				Sec:     sec,
+				Ptype:   ptype,
+				NewRule: params,
 			}).Err()
 	})
 }
@@ -281,11 +289,11 @@ func (w *Watcher) UpdateForRemovePolicy(sec, ptype string, params ...string) err
 			context.Background(),
 			w.options.Channel,
 			&MSG{
-				Method: UpdateForRemovePolicy,
-				ID:     w.options.LocalID,
-				Sec:    sec,
-				Ptype:  ptype,
-				Rule:   params,
+				Method:  UpdateForRemovePolicy,
+				ID:      w.options.LocalID,
+				Sec:     sec,
+				Ptype:   ptype,
+				NewRule: params,
 			},
 		).Err()
 	})
@@ -339,11 +347,11 @@ func (w *Watcher) UpdateForAddPolicies(sec string, ptype string, rules ...[]stri
 			context.Background(),
 			w.options.Channel,
 			&MSG{
-				Method: UpdateForAddPolicies,
-				ID:     w.options.LocalID,
-				Sec:    sec,
-				Ptype:  ptype,
-				Rules:  rules,
+				Method:   UpdateForAddPolicies,
+				ID:       w.options.LocalID,
+				Sec:      sec,
+				Ptype:    ptype,
+				NewRules: rules,
 			},
 		).Err()
 	})
@@ -359,11 +367,53 @@ func (w *Watcher) UpdateForRemovePolicies(sec string, ptype string, rules ...[]s
 			context.Background(),
 			w.options.Channel,
 			&MSG{
-				Method: UpdateForRemovePolicies,
-				ID:     w.options.LocalID,
-				Sec:    sec,
-				Ptype:  ptype,
-				Rules:  rules,
+				Method:   UpdateForRemovePolicies,
+				ID:       w.options.LocalID,
+				Sec:      sec,
+				Ptype:    ptype,
+				NewRules: rules,
+			},
+		).Err()
+	})
+}
+
+// UpdateForUpdatePolicy calls the update callback of other instances to synchronize their policy.
+// It is called after Enforcer.UpdatePolicy()
+func (w *Watcher) UpdateForUpdatePolicy(sec string, ptype string, oldRule, newRule []string) error {
+	return w.logRecord(func() error {
+		w.l.Lock()
+		defer w.l.Unlock()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method:  UpdateForUpdatePolicy,
+				ID:      w.options.LocalID,
+				Sec:     sec,
+				Ptype:   ptype,
+				OldRule: oldRule,
+				NewRule: newRule,
+			},
+		).Err()
+	})
+}
+
+// UpdateForUpdatePolicies calls the update callback of other instances to synchronize their policy.
+// It is called after Enforcer.UpdatePolicies()
+func (w *Watcher) UpdateForUpdatePolicies(sec string, ptype string, oldRules, newRules [][]string) error {
+	return w.logRecord(func() error {
+		w.l.Lock()
+		defer w.l.Unlock()
+		return w.pubClient.Publish(
+			context.Background(),
+			w.options.Channel,
+			&MSG{
+				Method:   UpdateForUpdatePolicies,
+				ID:       w.options.LocalID,
+				Sec:      sec,
+				Ptype:    ptype,
+				OldRules: oldRules,
+				NewRules: newRules,
 			},
 		).Err()
 	})

@@ -109,9 +109,8 @@ func (m *MSG) UnmarshalBinary(data []byte) error {
 // addr is a redis target string in the format "host:port"
 // setters allows for inline WatcherOptions
 //
-// 		Example:
-// 				w, err := rediswatcher.NewWatcher("127.0.0.1:6379",WatcherOptions{}, nil)
-//
+//	Example:
+//			w, err := rediswatcher.NewWatcher("127.0.0.1:6379",WatcherOptions{}, nil)
 func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Options.Addr = addr
 	initConfig(&option)
@@ -141,14 +140,10 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 // NewWatcherWithCluster creates a new Watcher to be used with a Casbin enforcer
 // addrs is a redis-cluster target string in the format "host1:port1,host2:port2,host3:port3"
 //
-// 		Example:
-// 				w, err := rediswatcher.NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6379,127.0.0.1:6379",WatcherOptions{})
-//
+//	Example:
+//			w, err := rediswatcher.NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6379,127.0.0.1:6379",WatcherOptions{})
 func NewWatcherWithCluster(addrs string, option WatcherOptions) (persist.Watcher, error) {
 	addrsStr := strings.Split(addrs, ",")
-	if len(addrsStr) < 3 {
-		return nil, errors.New("nodes num must >= 3")
-	}
 	option.ClusterOptions.Addrs = addrsStr
 	initConfig(&option)
 

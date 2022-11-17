@@ -21,7 +21,7 @@ import (
 	"log"
 
 	"github.com/casbin/casbin/v2"
-	watcher "github.com/casbin/redis-watcher/v2"
+	rediswatcher "github.com/casbin/redis-watcher/v2"
 	"github.com/go-redis/redis/v8"
 )
 

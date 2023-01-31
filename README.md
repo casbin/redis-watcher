@@ -65,6 +65,7 @@ func main() {
 
 	// Update the policy to test the effect.
 	// You should see "[casbin rules updated]" in the log.
+	// if you use in multi pods service in docker, use SavePolicy carefully, because it will truncate data and insert data
 	_ = e.SavePolicy()
 	// Only exists in test
 	fmt.Scanln()

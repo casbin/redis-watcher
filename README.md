@@ -22,7 +22,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	rediswatcher "github.com/casbin/redis-watcher/v2"
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
 func updateCallback(msg string) {

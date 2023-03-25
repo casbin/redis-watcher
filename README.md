@@ -10,7 +10,7 @@ Redis Watcher is a [Redis](http://redis.io) watcher for [Casbin](https://github.
 
 ## Installation
 
-Redis Watcher v2.4.0 and higher requires Go 1.18 or above.
+Redis Watcher v2.4.0 and higher requires Go 1.17 or above.
 
 	go get github.com/casbin/redis-watcher/v2
 

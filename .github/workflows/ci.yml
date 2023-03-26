@@ -55,7 +55,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16.x'
+          node-version: '18.x'
 
       - name: Install semantic-release
         run: npm install --save-dev semantic-release@21.0.0

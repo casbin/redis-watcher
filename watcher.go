@@ -12,7 +12,7 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
-	rds "github.com/go-redis/redis/v8"
+	rds "github.com/redis/go-redis/v9"
 )
 
 type Watcher struct {

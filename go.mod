@@ -3,9 +3,9 @@ module github.com/casbin/redis-watcher/v2
 go 1.18
 
 require (
-	github.com/casbin/casbin/v2 v2.54.0
+	github.com/casbin/casbin/v2 v2.66.1
 	github.com/google/uuid v1.3.0
-	github.com/redis/go-redis/v9 v9.0.3-0.20230325105712-984bc2810dd8
+	github.com/redis/go-redis/v9 v9.0.3
 )
 
 require (

@@ -10,6 +10,8 @@ type WatcherOptions struct {
 	ClusterOptions         rds.ClusterOptions
 	SubClient              *rds.Client
 	PubClient              *rds.Client
+	SubClusterClient       *rds.ClusterClient
+	PubClusterClient       *rds.ClusterClient
 	Channel                string
 	IgnoreSelf             bool
 	LocalID                string

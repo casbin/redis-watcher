@@ -46,6 +46,9 @@ func main() {
 		IgnoreSelf: false,
 	})
 
+	// ======================================
+	// Example 2: Redis Cluster (Using addrs)
+	// ======================================
 	// Or initialize the watcher in redis cluster.
 	// w, _ := rediswatcher.NewWatcherWithCluster("localhost:6379,localhost:6379,localhost:6379", rediswatcher.WatcherOptions{
 	// 	ClusterOptions: redis.ClusterOptions{
@@ -53,6 +56,36 @@ func main() {
 	// 	},
 	// 	Channel: "/casbin",
 	// 	IgnoreSelf: false,
+	// })
+
+
+	// ======================================
+	// Example 3: Standalone Redis with existing Redis client
+	// ======================================
+	// rdb := redis.NewClient(&redis.Options{
+	// 	Addr:     "localhost:6379",
+	// 	Password: "",
+	// 	DB:       0,
+	// })
+	// here we can directly pass existing redis client as SubClient and/or PubClient
+	// w, _ := rediswatcher.NewWatcher("", rediswatcher.WatcherOptions{
+	// 	SubClient: rdb,
+	// 	PubClient: rdb,
+	// 	Channel:   "/casbin",
+	// })
+
+	// ======================================
+	// Example 4: Redis Cluster with existing cluster clients
+	// ======================================
+	// clusterClient := redis.NewClusterClient(&redis.ClusterOptions{
+	// 	Addrs:    []string{"localhost:6379", "localhost:6380", "localhost:6381"},
+	// 	Password: "",
+	// })
+	// here we can directly pass existing redis client as SubClusterClient and/or PubClusterClient
+	// w, _ := rediswatcher.NewWatcherWithCluster("", rediswatcher.WatcherOptions{
+	// 	SubClusterClient: clusterClient,
+	// 	PubClusterClient: clusterClient,
+	// 	Channel:          "/casbin",
 	// })
 
 	// Initialize the enforcer.

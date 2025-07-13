@@ -105,12 +105,25 @@ func (m *MSG) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-// NewWatcher creates a new Watcher to be used with a Casbin enforcer
-// addr is a redis target string in the format "host:port"
-// setters allows for inline WatcherOptions
+// NewWatcher creates a new Watcher to be used with a Casbin enforcer.
+// `addr` is a Redis target string in the format "host:port".
+// If you already have Redis clients initialized, you can pass them using WatcherOptions:
+// - Use SubClient and PubClient for standalone Redis
 //
-//	Example:
-//			w, err := rediswatcher.NewWatcher("127.0.0.1:6379",WatcherOptions{}, nil)
+// If clients are provided, `addr` can be an empty string ("").
+// If clients are not provided, a new Redis client will be created using `addr`.
+//
+// Example with address:
+//
+//	w, err := rediswatcher.NewWatcher("127.0.0.1:6379", WatcherOptions{})
+//
+// Example with custom clients:
+//
+//	opts := WatcherOptions{
+//	    SubClient: myRedisClient,
+//	    PubClient: myRedisClient,
+//	}
+//	w, err := rediswatcher.NewWatcher("", opts)
 func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Options.Addr = addr
 	initConfig(&option)
@@ -137,27 +150,52 @@ func NewWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	return w, nil
 }
 
-// NewWatcherWithCluster creates a new Watcher to be used with a Casbin enforcer
-// addrs is a redis-cluster target string in the format "host1:port1,host2:port2,host3:port3"
+// NewWatcherWithCluster creates a new Watcher to be used with a Casbin enforcer.
+// If SubClusterClient and PubClusterClient are already set in the WatcherOptions,
+// the `addrs` string can be empty ("").
 //
-//	Example:
-//			w, err := rediswatcher.NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6379,127.0.0.1:6379",WatcherOptions{})
+// addrs should be a comma-separated list of Redis cluster nodes in the format:
+// "host1:port1,host2:port2,host3:port3"
+//
+// Example with address string:
+//     w, err := rediswatcher.NewWatcherWithCluster("127.0.0.1:6379,127.0.0.1:6380,127.0.0.1:6381", WatcherOptions{})
+//
+// Example with pre-initialized clients:
+//     opts := WatcherOptions{
+//         SubClusterClient: existingSubClient,
+//         PubClusterClient: existingPubClient,
+//     }
+//     w, err := rediswatcher.NewWatcherWithCluster("", opts)
+
 func NewWatcherWithCluster(addrs string, option WatcherOptions) (persist.Watcher, error) {
 	addrsStr := strings.Split(addrs, ",")
 	option.ClusterOptions.Addrs = addrsStr
 	initConfig(&option)
+	var watcherSubClient rds.UniversalClient
+	var watcherPubClient rds.UniversalClient
+
+	watcherSubClient = option.SubClusterClient
+	watcherPubClient = option.PubClusterClient
+
+	if option.SubClusterClient == nil {
+		watcherSubClient = rds.NewClusterClient(&rds.ClusterOptions{
+			Addrs:    addrsStr,
+			Password: option.ClusterOptions.Password,
+		})
+	}
+
+	if option.PubClusterClient == nil {
+		watcherPubClient = rds.NewClusterClient(&rds.ClusterOptions{
+			Addrs:    addrsStr,
+			Password: option.ClusterOptions.Password,
+		})
+	}
 
 	w := &Watcher{
-		subClient: rds.NewClusterClient(&rds.ClusterOptions{
-			Addrs:    addrsStr,
-			Password: option.ClusterOptions.Password,
-		}),
-		pubClient: rds.NewClusterClient(&rds.ClusterOptions{
-			Addrs:    addrsStr,
-			Password: option.ClusterOptions.Password,
-		}),
-		ctx:   context.Background(),
-		close: make(chan struct{}),
+		subClient: watcherSubClient,
+		pubClient: watcherPubClient,
+		ctx:       context.Background(),
+		close:     make(chan struct{}),
 	}
 
 	err := w.initConfig(option, true)
@@ -179,6 +217,16 @@ func NewWatcherWithCluster(addrs string, option WatcherOptions) (persist.Watcher
 	return w, nil
 }
 
+func (wo *WatcherOptions) validate_wo() error {
+	if wo.SubClient != nil && wo.SubClusterClient != nil {
+		return fmt.Errorf("only one of SubClient or SubClusterClient should be set")
+	}
+	if wo.PubClient != nil && wo.PubClusterClient != nil {
+		return fmt.Errorf("only one of SubClient or SubClusterClient should be set")
+	}
+	return nil
+}
+
 func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 	var err error
 	if option.OptionalUpdateCallback != nil {
@@ -192,9 +240,17 @@ func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 		return err
 	}
 
-	if option.SubClient != nil {
+	err = option.validate_wo()
+	if err != nil {
+		return err
+	}
+
+	if option.SubClusterClient != nil {
+		w.subClient = option.SubClusterClient
+	} else if option.SubClient != nil {
 		w.subClient = option.SubClient
 	} else {
+		// Neither provided, create new client
 		if len(cluster) > 0 && cluster[0] {
 			w.subClient = rds.NewClusterClient(&option.ClusterOptions)
 		} else {
@@ -202,15 +258,19 @@ func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 		}
 	}
 
-	if option.PubClient != nil {
+	if option.PubClusterClient != nil {
+		w.pubClient = option.PubClusterClient
+	} else if option.PubClient != nil {
 		w.pubClient = option.PubClient
 	} else {
+		// Neither provided, create new client
 		if len(cluster) > 0 && cluster[0] {
 			w.pubClient = rds.NewClusterClient(&option.ClusterOptions)
 		} else {
 			w.pubClient = rds.NewClient(&option.Options)
 		}
 	}
+
 	return nil
 }
 

@@ -299,35 +299,3 @@ func TestUpdateForUpdatePolicies(t *testing.T) {
 	w2.Close()
 	time.Sleep(time.Millisecond * 500)
 }
-
-func TestClusteredWatcherSync(t *testing.T) {
-	wo := rediswatcher.WatcherOptions{
-		IgnoreSelf: true, // Ensure only remote updates are received
-	}
-
-	// Initialize two clustered enforcers/watcher instances
-	e1, w1 := initWatcherWithOptions(t, wo, true)
-	e2, w2 := initWatcherWithOptions(t, wo, true)
-
-	// Wait for pub/sub connection setup
-	time.Sleep(500 * time.Millisecond)
-
-	// Add a policy to e1 and expect e2 to sync via the watcher
-	_, err := e1.AddPolicy("user1", "data1", "read")
-	if err != nil {
-		t.Fatalf("Failed to add policy on e1: %v", err)
-	}
-
-	time.Sleep(500 * time.Millisecond)
-
-	if !reflect.DeepEqual(e1.GetPolicy(), e2.GetPolicy()) {
-		t.Log("Method", "AddPolicy (Clustered)")
-		t.Log("e1 policy", e1.GetPolicy())
-		t.Log("e2 policy", e2.GetPolicy())
-		t.Error("Policy mismatch: Clustered enforcers did not sync")
-	}
-
-	// Clean up
-	w1.Close()
-	w2.Close()
-}

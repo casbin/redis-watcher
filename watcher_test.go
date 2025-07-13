@@ -1,12 +1,15 @@
 package rediswatcher_test
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
+	rds "github.com/redis/go-redis/v9"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/persist"
@@ -297,4 +300,102 @@ func TestUpdateForUpdatePolicies(t *testing.T) {
 	w.Close()
 	w2.Close()
 	time.Sleep(time.Millisecond * 500)
+}
+
+func TestClusteredWatcherSync(t *testing.T) {
+	wo := rediswatcher.WatcherOptions{
+		IgnoreSelf: true, // Ensure only remote updates are received
+	}
+
+	// Initialize two clustered enforcers/watcher instances
+	e1, w1 := initWatcherWithOptions(t, wo, true)
+	e2, w2 := initWatcherWithOptions(t, wo, true)
+
+	// Wait for pub/sub connection setup
+	time.Sleep(500 * time.Millisecond)
+
+	// Add a policy to e1 and expect e2 to sync via the watcher
+	_, err := e1.AddPolicy("user1", "data1", "read")
+	if err != nil {
+		t.Fatalf("Failed to add policy on e1: %v", err)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if !reflect.DeepEqual(e1.GetPolicy(), e2.GetPolicy()) {
+		t.Log("Method", "AddPolicy (Clustered)")
+		t.Log("e1 policy", e1.GetPolicy())
+		t.Log("e2 policy", e2.GetPolicy())
+		t.Error("Policy mismatch: Clustered enforcers did not sync")
+	}
+
+	// Clean up
+	w1.Close()
+	w2.Close()
+}
+
+func TestClusteredWatcherSyncWithPreconfiguredClients(t *testing.T) {
+	// Manually create Redis cluster clients
+	subClient := rds.NewClusterClient(&rds.ClusterOptions{
+		Addrs: []string{"127.0.0.1:6379", "127.0.0.1:6379", "127.0.0.1:6379"},
+	})
+	pubClient := rds.NewClusterClient(&rds.ClusterOptions{
+		Addrs: []string{"127.0.0.1:6379", "127.0.0.1:6379", "127.0.0.1:6379"},
+	})
+
+	// Ping to ensure clients are connected
+	if err := subClient.Ping(context.Background()).Err(); err != nil {
+		t.Fatalf("Failed to ping subClient: %v", err)
+	}
+	if err := pubClient.Ping(context.Background()).Err(); err != nil {
+		t.Fatalf("Failed to ping pubClient: %v", err)
+	}
+
+	// Prepare watcher options with the created clients
+	wo := rediswatcher.WatcherOptions{
+		IgnoreSelf:       true,
+		SubClusterClient: subClient,
+		PubClusterClient: pubClient,
+	}
+
+	// Initialize the watcher using clients instead of address string
+	w, err := rediswatcher.NewWatcherWithCluster("", wo)
+	if err != nil {
+		t.Fatalf("Failed to initialize watcher with custom clients: %v", err)
+	}
+
+	// Setup enforcer and bind to watcher
+	e, err := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
+	if err != nil {
+		t.Fatalf("Failed to create enforcer: %v", err)
+	}
+	_ = e.SetWatcher(w)
+
+	// Setup another enforcer with a regular client to test sync
+	e2, w2 := initWatcherWithOptions(t, wo, true)
+
+	// Setup callback
+	t.Log("Waiting for watcher pub/sub sync...")
+	time.Sleep(500 * time.Millisecond)
+
+	// Add a policy in e and expect e2 to reflect the change
+	_, err = e.AddPolicy("userXYZ", "dataXYZ", "read")
+	if err != nil {
+		t.Fatalf("Failed to add policy: %v", err)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+
+	if !reflect.DeepEqual(e.GetPolicy(), e2.GetPolicy()) {
+		t.Log("Method", "AddPolicy (Custom Clients)")
+		t.Log("e  policy", e.GetPolicy())
+		t.Log("e2 policy", e2.GetPolicy())
+		t.Error("Policy mismatch: Watcher with custom clients failed to sync")
+	}
+
+	// Clean up
+	w.Close()
+	w2.Close()
+	_ = subClient.Close()
+	_ = pubClient.Close()
 }

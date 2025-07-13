@@ -36,7 +36,7 @@ jobs:
 
       - name: Install goveralls
         env:
-          GO111MODULE: off
+          GO111MODULE: on
         run: go get github.com/mattn/goveralls
 
       - name: Send coverage

@@ -3,13 +3,15 @@ package rediswatcher_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/persist"
+	"github.com/google/uuid"
+
+	"github.com/casbin/casbin/v3"
+	"github.com/casbin/casbin/v3/persist"
+
 	rediswatcher "github.com/casbin/redis-watcher/v2"
 )
 
@@ -117,10 +119,12 @@ func TestUpdateForAddPolicy(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	_, _ = e.AddPolicy("alice", "book1", "write")
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "AddPolicy")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -139,10 +143,12 @@ func TestUpdateForRemovePolicy(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	_, _ = e.RemovePolicy("alice", "data1", "read")
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "RemovePolicy")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -161,10 +167,12 @@ func TestUpdateForRemoveFilteredPolicy(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	_, _ = e.RemoveFilteredPolicy(1, "data1", "read")
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "RemoveFilteredPolicy")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -183,10 +191,12 @@ func TestUpdateSavePolicy(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	_ = e.SavePolicy()
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "SavePolicy")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -212,10 +222,12 @@ func TestUpdateForAddPolicies(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	_, _ = e.AddPolicies(rules)
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "AddPolicies")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -241,10 +253,12 @@ func TestUpdateForRemovePolicies(t *testing.T) {
 	time.Sleep(time.Millisecond * 500)
 	_, _ = e.RemovePolicies(rules)
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "RemovePolicies")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -264,10 +278,12 @@ func TestUpdateForUpdatePolicy(t *testing.T) {
 	_, _ = e.UpdatePolicy([]string{"alice", "data1", "read"}, []string{"alice", "data1", "write"})
 
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "UpdatePolicy")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 
@@ -287,10 +303,12 @@ func TestUpdateForUpdatePolicies(t *testing.T) {
 	_, _ = e.UpdatePolicies([][]string{{"alice", "data1", "read"}}, [][]string{{"alice", "data1", "write"}})
 
 	time.Sleep(time.Millisecond * 500)
-	if !reflect.DeepEqual(e2.GetPolicy(), e.GetPolicy()) {
+	e2Policy, _ := e2.GetPolicy()
+	ePolicy, _ := e.GetPolicy()
+	if !reflect.DeepEqual(e2Policy, ePolicy) {
 		t.Log("Method", "UpdatePolicies")
-		t.Log("e.policy", e.GetPolicy())
-		t.Log("e2.policy", e2.GetPolicy())
+		t.Log("e.policy", ePolicy)
+		t.Log("e2.policy", e2Policy)
 		t.Error("These two enforcers' policies should be equal")
 	}
 

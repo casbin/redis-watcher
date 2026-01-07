@@ -12,7 +12,7 @@ import (
 	"github.com/casbin/casbin/v3"
 	"github.com/casbin/casbin/v3/persist"
 
-	rediswatcher "github.com/casbin/redis-watcher/v2"
+	rediswatcher "github.com/casbin/redis-watcher/v3"
 )
 
 func initWatcherWithOptions(t *testing.T, wo rediswatcher.WatcherOptions, cluster ...bool) (*casbin.Enforcer, *rediswatcher.Watcher) {

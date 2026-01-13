@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/casbin/casbin/v2"
-	"github.com/casbin/casbin/v2/persist"
+	"github.com/casbin/casbin/v3"
+	"github.com/casbin/casbin/v3/persist"
 	rediswatcher "github.com/casbin/redis-watcher/v2"
 )
 

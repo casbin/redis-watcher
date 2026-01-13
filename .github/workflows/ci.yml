@@ -29,13 +29,13 @@ jobs:
 
   semantic-release:
     needs: [test]
+    if: github.repository == 'casbin/redis-watcher' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
 
       - uses: actions/checkout@v2
 
       - name: Run semantic-release
-        if: github.repository == 'casbin/redis-watcher' && github.event_name == 'push'
         run: |
           npm install --save-dev semantic-release@17.2.4
           npx semantic-release

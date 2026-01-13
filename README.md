@@ -1,20 +1,24 @@
-Redis Watcher 
----
+Redis Watcher
+====
 
 > For Go 1.17+, use v2.4.0+ ,  
-> For Go 1.16 and below, stay on v2.3.0.  
+> For Go 1.16 and below, stay on v2.3.0.
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/casbin/redis-watcher)](https://goreportcard.com/report/github.com/casbin/redis-watcher)
 [![Go](https://github.com/casbin/redis-watcher/actions/workflows/ci.yml/badge.svg)](https://github.com/casbin/redis-watcher/actions/workflows/ci.yml)
-[![report](https://goreportcard.com/badge/github.com/casbin/redis-watcher)](https://goreportcard.com/report/github.com/casbin/redis-watcher)
 [![Coverage Status](https://coveralls.io/repos/github/casbin/redis-watcher/badge.svg?branch=master)](https://coveralls.io/github/casbin/redis-watcher?branch=master)
-[![Go Reference](https://pkg.go.dev/badge/github.com/casbin/redis-watcher/v2.svg)](https://pkg.go.dev/github.com/casbin/redis-watcher/v2)
-[![Release](https://img.shields.io/github/v/release/casbin/redis-watcher)](https://github.com/casbin/redis-watcher/releases/latest)
+[![Godoc](https://godoc.org/github.com/casbin/redis-watcher?status.svg)](https://godoc.org/github.com/casbin/redis-watcher)
+[![Release](https://img.shields.io/github/release/casbin/redis-watcher.svg)](https://github.com/casbin/redis-watcher/releases/latest)
+[![Discord](https://img.shields.io/discord/1022748306096537660?logo=discord&label=discord&color=5865F2)](https://discord.gg/S5UjpzGZjN)
+[![Sourcegraph](https://sourcegraph.com/github.com/casbin/redis-watcher/-/badge.svg)](https://sourcegraph.com/github.com/casbin/redis-watcher?badge)
 
 Redis Watcher is a [Redis](http://redis.io) watcher for [Casbin](https://github.com/casbin/casbin).
 
 ## Installation
 
-    go get github.com/casbin/redis-watcher/v2
+```bash
+go get github.com/casbin/redis-watcher/v2
+```
 
 ## Simple Example
 
@@ -22,6 +26,7 @@ Redis Watcher is a [Redis](http://redis.io) watcher for [Casbin](https://github.
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/casbin/casbin/v2"

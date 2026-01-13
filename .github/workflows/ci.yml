@@ -1,20 +1,11 @@
 name: Go
 
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+on: [push, pull_request]
 
 jobs:
+
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        go-version: [ '1.17', '1.18', '1.19', '1.20' ]
 
     services:
       redis:
@@ -23,44 +14,30 @@ jobs:
           - 6379:6379
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: '1.23.0'
 
-      - name: Test
-        run: go test -covermode atomic -coverprofile=covprofile ./...
+      - uses: actions/checkout@v2
+      - name: Run Unit tests
+        run: go test -v -coverprofile=./profile.cov ./...
 
-      - name: Install goveralls
-        env:
-          GO111MODULE: off
-        run: go get github.com/mattn/goveralls
-
-      - name: Send coverage
-        env:
-          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: goveralls -coverprofile=covprofile -service=github
+      - uses: shogo82148/actions-goveralls@v1
+        with:
+          path-to-profile: ./profile.cov
 
   semantic-release:
     needs: [test]
-    if: github.repository == 'casbin/redis-watcher' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
 
-      - name: Install Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18.x'
-
-      - name: Install semantic-release
-        run: npm install --save-dev semantic-release@21.0.0
+      - uses: actions/checkout@v2
 
       - name: Run semantic-release
-        run: npx semantic-release
+        if: github.repository == 'casbin/redis-watcher' && github.event_name == 'push'
+        run: |
+          npm install --save-dev semantic-release@17.2.4
+          npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

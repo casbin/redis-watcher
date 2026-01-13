@@ -8,8 +8,8 @@ import (
 type WatcherOptions struct {
 	Options                rds.Options
 	ClusterOptions         rds.ClusterOptions
-	SubClient              *rds.Client
-	PubClient              *rds.Client
+	SubClient              rds.UniversalClient
+	PubClient              rds.UniversalClient
 	Channel                string
 	IgnoreSelf             bool
 	LocalID                string

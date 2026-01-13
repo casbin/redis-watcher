@@ -1,6 +1,6 @@
 module github.com/casbin/redis-watcher/v2
 
-go 1.24.0
+go 1.23
 
 require (
 	github.com/casbin/casbin/v2 v2.66.1

@@ -89,7 +89,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/casbin/casbin/v3"
 	rediswatcher "github.com/casbin/redis-watcher/v2"
@@ -134,7 +133,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/casbin/casbin/v3"
 	rediswatcher "github.com/casbin/redis-watcher/v2"

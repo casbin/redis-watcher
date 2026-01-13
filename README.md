@@ -105,6 +105,7 @@ func main() {
 	})
 
 	// Initialize the watcher with existing client
+	// Pass empty string for addr since the SubClient and PubClient are already provided
 	w, _ := rediswatcher.NewWatcher("", rediswatcher.WatcherOptions{
 		SubClient: redisClient,
 		PubClient: redisClient,
@@ -148,6 +149,7 @@ func main() {
 	})
 
 	// Initialize the watcher with existing cluster client
+	// Pass empty string for addrs since the SubClient and PubClient are already provided
 	w, _ := rediswatcher.NewWatcherWithCluster("", rediswatcher.WatcherOptions{
 		SubClient: clusterClient,
 		PubClient: clusterClient,

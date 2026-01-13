@@ -332,20 +332,22 @@ func TestNewWatcherWithClusterUsingExistingClient(t *testing.T) {
 
 	// Initialize watcher with existing client
 	// Pass empty string for addrs since we're using existing clients
+	// When SubClient and PubClient are provided, the addrs parameter is ignored
 	w, err := rediswatcher.NewWatcherWithCluster("", wo)
 	if err != nil {
 		t.Fatalf("Failed to create watcher with existing client: %v", err)
 	}
+	watcher := w.(*rediswatcher.Watcher)
 
 	// Verify the watcher works
-	_ = w.SetUpdateCallback(func(s string) {
+	_ = watcher.SetUpdateCallback(func(s string) {
 		t.Log("Received update:", s)
 	})
 
-	_ = w.(*rediswatcher.Watcher).Update()
+	_ = watcher.Update()
 	time.Sleep(time.Millisecond * 500)
 
-	w.(*rediswatcher.Watcher).Close()
+	watcher.Close()
 	time.Sleep(time.Millisecond * 500)
 }
 
@@ -362,19 +364,22 @@ func TestNewWatcherWithExistingClient(t *testing.T) {
 	}
 
 	// Initialize watcher with existing client
+	// Pass empty string for addr since we're using existing clients
+	// When SubClient and PubClient are provided, the addr parameter is ignored
 	w, err := rediswatcher.NewWatcher("", wo)
 	if err != nil {
 		t.Fatalf("Failed to create watcher with existing client: %v", err)
 	}
+	watcher := w.(*rediswatcher.Watcher)
 
 	// Verify the watcher works
-	_ = w.SetUpdateCallback(func(s string) {
+	_ = watcher.SetUpdateCallback(func(s string) {
 		t.Log("Received update:", s)
 	})
 
-	_ = w.(*rediswatcher.Watcher).Update()
+	_ = watcher.Update()
 	time.Sleep(time.Millisecond * 500)
 
-	w.(*rediswatcher.Watcher).Close()
+	watcher.Close()
 	time.Sleep(time.Millisecond * 500)
 }

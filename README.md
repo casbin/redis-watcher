@@ -78,6 +78,97 @@ func main() {
 
 ```
 
+## Using Existing Redis Client
+
+If you already have an existing Redis client instance (e.g., due to restricted access to connection details or centralized Redis setup), you can reuse it to create a watcher.
+
+### With Regular Redis Client
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/casbin/casbin/v3"
+	rediswatcher "github.com/casbin/redis-watcher/v2"
+	"github.com/redis/go-redis/v9"
+)
+
+func main() {
+	// Create your own Redis client
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+
+	// Initialize the watcher with existing client
+	// Pass empty string for addr since the SubClient and PubClient are already provided
+	w, _ := rediswatcher.NewWatcher("", rediswatcher.WatcherOptions{
+		SubClient: redisClient,
+		PubClient: redisClient,
+		Channel:   "/casbin",
+	})
+
+	// Initialize the enforcer.
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
+
+	// Set the watcher for the enforcer.
+	_ = e.SetWatcher(w)
+
+	// Set callback
+	_ = w.SetUpdateCallback(rediswatcher.DefaultUpdateCallback(e))
+
+	// Update the policy to test the effect.
+	_ = e.SavePolicy()
+	fmt.Scanln()
+}
+```
+
+### With Redis Cluster Client
+
+```go
+package main
+
+import (
+	"fmt"
+
+	"github.com/casbin/casbin/v3"
+	rediswatcher "github.com/casbin/redis-watcher/v2"
+	"github.com/redis/go-redis/v9"
+)
+
+func main() {
+	// Create your own Redis cluster client
+	clusterClient := redis.NewClusterClient(&redis.ClusterOptions{
+		Addrs:    []string{"localhost:7000", "localhost:7001", "localhost:7002"},
+		Password: "",
+	})
+
+	// Initialize the watcher with existing cluster client
+	// Pass empty string for addrs since the SubClient and PubClient are already provided
+	w, _ := rediswatcher.NewWatcherWithCluster("", rediswatcher.WatcherOptions{
+		SubClient: clusterClient,
+		PubClient: clusterClient,
+		Channel:   "/casbin",
+	})
+
+	// Initialize the enforcer.
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
+
+	// Set the watcher for the enforcer.
+	_ = e.SetWatcher(w)
+
+	// Set callback
+	_ = w.SetUpdateCallback(rediswatcher.DefaultUpdateCallback(e))
+
+	// Update the policy to test the effect.
+	_ = e.SavePolicy()
+	fmt.Scanln()
+}
+```
+
 ## Getting Help
 
 - [Casbin](https://github.com/casbin/casbin)

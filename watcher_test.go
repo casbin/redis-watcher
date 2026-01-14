@@ -11,6 +11,7 @@ import (
 	"github.com/casbin/casbin/v3"
 	"github.com/casbin/casbin/v3/persist"
 	rediswatcher "github.com/casbin/redis-watcher/v2"
+	"github.com/redis/go-redis/v9"
 )
 
 func initWatcherWithOptions(t *testing.T, wo rediswatcher.WatcherOptions, cluster ...bool) (*casbin.Enforcer, *rediswatcher.Watcher) {
@@ -312,5 +313,73 @@ func TestUpdateForUpdatePolicies(t *testing.T) {
 
 	w.Close()
 	w2.Close()
+	time.Sleep(time.Millisecond * 500)
+}
+
+func TestNewWatcherWithClusterUsingExistingClient(t *testing.T) {
+	// Create a regular Redis client that implements UniversalClient interface
+	// In production, this would be a cluster client
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+
+	// Use the existing client for both pub and sub
+	// This demonstrates that UniversalClient type works with any Redis client type
+	wo := rediswatcher.WatcherOptions{
+		SubClient: redisClient,
+		PubClient: redisClient,
+	}
+
+	// Initialize watcher with existing client
+	// Pass empty string for addrs since we're using existing clients
+	// When SubClient and PubClient are provided, the addrs parameter is ignored
+	w, err := rediswatcher.NewWatcherWithCluster("", wo)
+	if err != nil {
+		t.Fatalf("Failed to create watcher with existing client: %v", err)
+	}
+	watcher := w.(*rediswatcher.Watcher)
+
+	// Verify the watcher works
+	_ = watcher.SetUpdateCallback(func(s string) {
+		t.Log("Received update:", s)
+	})
+
+	_ = watcher.Update()
+	time.Sleep(time.Millisecond * 500)
+
+	watcher.Close()
+	time.Sleep(time.Millisecond * 500)
+}
+
+func TestNewWatcherWithExistingClient(t *testing.T) {
+	// Create a regular Redis client externally
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "127.0.0.1:6379",
+	})
+
+	// Use the existing client for both pub and sub
+	wo := rediswatcher.WatcherOptions{
+		SubClient: redisClient,
+		PubClient: redisClient,
+	}
+
+	// Initialize watcher with existing client
+	// Pass empty string for addr since we're using existing clients
+	// When SubClient and PubClient are provided, the addr parameter is ignored
+	w, err := rediswatcher.NewWatcher("", wo)
+	if err != nil {
+		t.Fatalf("Failed to create watcher with existing client: %v", err)
+	}
+	watcher := w.(*rediswatcher.Watcher)
+
+	// Verify the watcher works
+	_ = watcher.SetUpdateCallback(func(s string) {
+		t.Log("Received update:", s)
+	})
+
+	_ = watcher.Update()
+	time.Sleep(time.Millisecond * 500)
+
+	watcher.Close()
 	time.Sleep(time.Millisecond * 500)
 }

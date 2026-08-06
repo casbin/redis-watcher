@@ -1,0 +1,103 @@
+name: Release
+
+# Releases are cut manually by pushing a tag, there is no automatic release.
+#
+#   v1.4.0-rc1  ->  GitHub pre-release (the artifact the Apache vote runs on)
+#   v1.4.0      ->  GitHub release + publish to the Go module proxy
+#
+# Both cases attach an Apache-style source package. The release manager
+# downloads it and signs/checksums it locally before starting the vote.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    if: github.repository == 'casbin/redis-watcher'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          VERSION="${TAG#v}"
+
+          # The RC suffix marks a candidate, it is not part of the released
+          # version: the artifact voted on must be the artifact released, so
+          # the source package is always named after the final version.
+          BASE="$(printf '%s' "$VERSION" | sed -E 's/-[Rr][Cc].*$//')"
+
+          if [ "$BASE" = "$VERSION" ]; then
+            IS_RC=false
+          else
+            IS_RC=true
+          fi
+
+          {
+            echo "tag=$TAG"
+            echo "is_rc=$IS_RC"
+            echo "name=apache-casbin-redis-watcher-${BASE}-incubating-src"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build source package
+        run: |
+          set -euo pipefail
+          NAME="${{ steps.version.outputs.name }}"
+          git archive --format=tar.gz --prefix="${NAME}/" -o "${NAME}.tar.gz" HEAD
+          tar -tzf "${NAME}.tar.gz"
+
+      - name: Create GitHub pre-release
+        if: steps.version.outputs.is_rc == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "${{ steps.version.outputs.name }}.tar.gz" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --prerelease \
+            --generate-notes \
+            --notes "Release candidate for the Apache vote. Not a released version."
+
+      - name: Create GitHub release
+        if: steps.version.outputs.is_rc == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            "${{ steps.version.outputs.name }}.tar.gz" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes
+
+      - name: Set up Go
+        if: steps.version.outputs.is_rc == 'false'
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Publish to the Go module proxy
+        if: steps.version.outputs.is_rc == 'false'
+        env:
+          GOPROXY: proxy.golang.org
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          MODULE="$(go list -m)"
+          # The proxy only sees the tag once it has fetched it, so give it a
+          # few tries before calling the publish a failure.
+          for i in 1 2 3 4 5; do
+            if go list -m "${MODULE}@${TAG}"; then
+              exit 0
+            fi
+            echo "proxy has not picked up ${MODULE}@${TAG} yet, retrying ($i/5)"
+            sleep 15
+          done
+          exit 1

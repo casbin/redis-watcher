@@ -67,16 +67,16 @@ func DefaultUpdateCallback(e casbin.IEnforcer) func(string) {
 }
 
 type MSG struct {
-	Method      UpdateType
-	ID          string
-	Sec         string
-	Ptype       string
-	OldRule     []string
-	OldRules    [][]string
-	NewRule     []string
-	NewRules    [][]string
-	FieldIndex  int
-	FieldValues []string
+	Method      UpdateType `json:"method"`
+	ID          string     `json:"id"`
+	Sec         string     `json:"sec"`
+	Ptype       string     `json:"ptype"`
+	OldRule     []string   `json:"oldRule"`
+	OldRules    [][]string `json:"oldRules"`
+	NewRule     []string   `json:"newRule"`
+	NewRules    [][]string `json:"newRules"`
+	FieldIndex  int        `json:"fieldIndex"`
+	FieldValues []string   `json:"fieldValues"`
 }
 
 type UpdateType string
@@ -97,7 +97,7 @@ func (m *MSG) MarshalBinary() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// UnmarshalBinary decodes the struct into a User
+// UnmarshalBinary decodes the struct into a User.
 func (m *MSG) UnmarshalBinary(data []byte) error {
 	if err := json.Unmarshal(data, m); err != nil {
 		return err
@@ -214,7 +214,7 @@ func (w *Watcher) initConfig(option WatcherOptions, cluster ...bool) error {
 	return nil
 }
 
-// NewPublishWatcher return a Watcher only publish but not subscribe
+// NewPublishWatcher return a Watcher only publish but not subscribe.
 func NewPublishWatcher(addr string, option WatcherOptions) (persist.Watcher, error) {
 	option.Options.Addr = addr
 	w := &Watcher{
@@ -230,7 +230,7 @@ func NewPublishWatcher(addr string, option WatcherOptions) (persist.Watcher, err
 }
 
 // SetUpdateCallback sets the update callback function invoked by the watcher
-// when the policy is updated. Defaults to Enforcer.LoadPolicy()
+// when the policy is updated. Defaults to Enforcer.LoadPolicy().
 func (w *Watcher) SetUpdateCallback(callback func(string)) error {
 	w.l.Lock()
 	w.callback = callback
@@ -239,7 +239,7 @@ func (w *Watcher) SetUpdateCallback(callback func(string)) error {
 }
 
 // Update publishes a message to all other casbin instances telling them to
-// invoke their update callback
+// invoke their update callback.
 func (w *Watcher) Update() error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -256,7 +256,7 @@ func (w *Watcher) Update() error {
 }
 
 // UpdateForAddPolicy calls the update callback of other instances to synchronize their policy.
-// It is called after Enforcer.AddPolicy()
+// It is called after Enforcer.AddPolicy().
 func (w *Watcher) UpdateForAddPolicy(sec, ptype string, params ...string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -275,7 +275,7 @@ func (w *Watcher) UpdateForAddPolicy(sec, ptype string, params ...string) error 
 }
 
 // UpdateForRemovePolicy calls the update callback of other instances to synchronize their policy.
-// It is called after Enforcer.RemovePolicy()
+// It is called after Enforcer.RemovePolicy().
 func (w *Watcher) UpdateForRemovePolicy(sec, ptype string, params ...string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -295,7 +295,7 @@ func (w *Watcher) UpdateForRemovePolicy(sec, ptype string, params ...string) err
 }
 
 // UpdateForRemoveFilteredPolicy calls the update callback of other instances to synchronize their policy.
-// It is called after Enforcer.RemoveFilteredNamedGroupingPolicy()
+// It is called after Enforcer.RemoveFilteredNamedGroupingPolicy().
 func (w *Watcher) UpdateForRemoveFilteredPolicy(sec, ptype string, fieldIndex int, fieldValues ...string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -316,7 +316,7 @@ func (w *Watcher) UpdateForRemoveFilteredPolicy(sec, ptype string, fieldIndex in
 }
 
 // UpdateForSavePolicy calls the update callback of other instances to synchronize their policy.
-// It is called after Enforcer.RemoveFilteredNamedGroupingPolicy()
+// It is called after Enforcer.RemoveFilteredNamedGroupingPolicy().
 func (w *Watcher) UpdateForSavePolicy(model model.Model) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -333,7 +333,7 @@ func (w *Watcher) UpdateForSavePolicy(model model.Model) error {
 }
 
 // UpdateForAddPolicies calls the update callback of other instances to synchronize their policies in batch.
-// It is called after Enforcer.AddPolicies()
+// It is called after Enforcer.AddPolicies().
 func (w *Watcher) UpdateForAddPolicies(sec string, ptype string, rules ...[]string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -353,7 +353,7 @@ func (w *Watcher) UpdateForAddPolicies(sec string, ptype string, rules ...[]stri
 }
 
 // UpdateForRemovePolicies calls the update callback of other instances to synchronize their policies in batch.
-// It is called after Enforcer.RemovePolicies()
+// It is called after Enforcer.RemovePolicies().
 func (w *Watcher) UpdateForRemovePolicies(sec string, ptype string, rules ...[]string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -373,7 +373,7 @@ func (w *Watcher) UpdateForRemovePolicies(sec string, ptype string, rules ...[]s
 }
 
 // UpdateForUpdatePolicy calls the update callback of other instances to synchronize their policy.
-// It is called after Enforcer.UpdatePolicy()
+// It is called after Enforcer.UpdatePolicy().
 func (w *Watcher) UpdateForUpdatePolicy(sec string, ptype string, oldRule, newRule []string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -394,7 +394,7 @@ func (w *Watcher) UpdateForUpdatePolicy(sec string, ptype string, oldRule, newRu
 }
 
 // UpdateForUpdatePolicies calls the update callback of other instances to synchronize their policy.
-// It is called after Enforcer.UpdatePolicies()
+// It is called after Enforcer.UpdatePolicies().
 func (w *Watcher) UpdateForUpdatePolicies(sec string, ptype string, oldRules, newRules [][]string) error {
 	return w.logRecord(func() error {
 		w.l.Lock()
@@ -420,10 +420,6 @@ func (w *Watcher) logRecord(f func() error) error {
 		log.Println(err)
 	}
 	return err
-}
-
-func (w *Watcher) unsubscribe(psc *rds.PubSub) error {
-	return psc.Unsubscribe(w.ctx)
 }
 
 func (w *Watcher) subscribe() {
@@ -462,7 +458,7 @@ func (w *Watcher) subscribe() {
 				log.Println(fmt.Printf("Failed to parse message: %s with error: %s\n", data, err.Error()))
 			} else {
 				isSelf := msgStruct.ID == w.options.LocalID
-				if !(w.options.IgnoreSelf && isSelf) {
+				if !w.options.IgnoreSelf || !isSelf {
 					w.callback(data)
 				}
 			}
